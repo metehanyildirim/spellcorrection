@@ -9,52 +9,30 @@ import time
 
 dataset = open("datasetOriginal.txt")
 spaced = []
-words = []
+words = ""
 for line in dataset:
-    words.extend(line.split())
+    words += " " + line
 
+correctString = words
+m = re.search('<ERR targ=(.+?)>[^(</ERR>)]*</ERR>', correctString)
+correctWords = set()
+print(m.group(1))
+while(m != None):
+    correctString = re.sub(re.escape(m.group(0)), "<" + m.group(1).replace(" ", "#") + ">", correctString)
+    print(m.group(1).replace(" ", "#"))
+    print(m.group(0))
+    m = re.search('<ERR targ=(.+?)>[^<]*</ERR>', correctString)
 
-correctWords = []
+correctWords = correctString.split()
+correctionIndexes = []
+for counter , word in enumerate(correctWords):
+    m = re.match("<([^>]*)>", word)
+    if(m):
+        correctionIndexes.append(counter)
+        correctWords[counter] = m.group(1)
+
 origWords = []
 
-
-### Our word array with correct words.
-correctWords = [x.lower() for x in words]
-correctionIndexes = []
-i = 0
-while i < len(correctWords):
-    if(correctWords[i] == "<err"):
-        while(correctWords[i] != "</err>"):
-            m = re.search('targ=(.+?)>', correctWords[i])
-            if (m):
-                correctWords[i] = m.group(1)
-                correctionIndexes.append(i)
-                i += 1
-            else:
-                del correctWords[i]
-        del correctWords[i]
-    else:
-        i += 1
-
-### Our word array with incorrect words.
-start_indices = [i for i, x in enumerate(words) if x == "<ERR"]
-end_indices = [i for i, x in enumerate(words) if x == "</ERR>"]
-origWords = words[:]
-for i in range(len(start_indices)):
-    origWords[start_indices[i]] = ' '.join(words[start_indices[i]:end_indices[i] + 1])
-    m = re.search('<ERR targ=.*>(.+?)</ERR>', origWords[start_indices[i]])
-    if(m):
-        origWords[start_indices[i]] = str.strip(m.group(1))
-i = 0
-delete = False
-while i < len(origWords):
-    if(origWords[i].startswith("targ=")):
-        while(origWords[i] != "</ERR>"):
-            del origWords[i]
-        del origWords[i]
-        i += 1
-    else:
-        i += 1
 
 with open("wordstuff", "w") as f:
     for i in range(len(origWords)):
