@@ -1,3 +1,5 @@
+from math import log2
+
 class Graph:
     def __init__(self):
         self.nodes = []
@@ -17,7 +19,7 @@ class Graph:
     def calculateInitials(self, unigram):
         for vertex in self.nodes:
             if(vertex.layer == 1):
-                vertex.probability *= unigram.getProbability(vertex.word)
+                vertex.probability += log2(unigram.getProbability(vertex.word))
 
     def calculateProbabilities(self, bigram):
         for i in range(2, self.nodes[-1].layer + 1):
@@ -27,9 +29,10 @@ class Graph:
 
     def calculateLayerProbs(self, layerednodes , prevnodes, bigram):
         for curr in layerednodes:
-            probs = [prev.probability * bigram.getProbability(prev.word, curr.word, True) * prev.emission for prev in prevnodes] # Calculate probability.
+            probs = [prev.probability + log2(bigram.getProbability(prev.word, curr.word, True)) + log2(prev.emission) for prev in prevnodes] # Calculate probability.
             maximumProb = max(probs)
             index = probs.index(maximumProb)
+            curr.probability = maximumProb
             self.add_edge(curr.id, prevnodes[index], maximumProb)
 
     def getSentence(self):
@@ -42,7 +45,7 @@ class Graph:
             ourLayer = ourNode.layer
         ourSentence.append(ourNode.word)
         ourSentence.reverse()
-        return ' '.join(ourSentence)
+        return ourSentence
 
 
 
@@ -53,7 +56,7 @@ class Vertex:
         self.layer = layer
         self.word = word
         self.emission = emission
-        self.probability = 1
+        self.probability = 0
 
     def __str__(self):
         return str(self.id) + " " + str(self.layer) + " " + str(self.word) + " " + str(self.emission)

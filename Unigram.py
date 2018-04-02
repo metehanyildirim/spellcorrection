@@ -21,4 +21,4 @@ class Unigram:
     Returns the probability of certain word.
     '''
     def getProbability(self, word):
-        return self.occurences.get(word, 0) / self.sum
+        return self.occurences.get(word, 1) / self.sum

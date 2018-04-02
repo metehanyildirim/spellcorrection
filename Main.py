@@ -6,37 +6,54 @@ from Graph import Graph
 from Graph import Vertex
 import re
 import time
+import sys
 
-dataset = open("datasetOriginal.txt")
+dataset = open(sys.argv[1])
+output = open(sys.argv[2], "w")
 spaced = []
 words = ""
+wordList = []
 for line in dataset:
     words += " " + line
+    wordList.extend(line.split())
 
+#Correct words
 correctString = words
 m = re.search('<ERR targ=(.+?)>[^(</ERR>)]*</ERR>', correctString)
-correctWords = set()
-print(m.group(1))
 while(m != None):
     correctString = re.sub(re.escape(m.group(0)), "<" + m.group(1).replace(" ", "#") + ">", correctString)
-    print(m.group(1).replace(" ", "#"))
-    print(m.group(0))
     m = re.search('<ERR targ=(.+?)>[^<]*</ERR>', correctString)
 
-correctWords = correctString.split()
+correctWords = correctString.lower().split()
 correctionIndexes = []
 for counter , word in enumerate(correctWords):
     m = re.match("<([^>]*)>", word)
     if(m):
         correctionIndexes.append(counter)
-        correctWords[counter] = m.group(1)
-
-origWords = []
+        correctWords[counter] = m.group(1).strip(".").strip("!").strip(",").lower().replace("#", " ")
 
 
-with open("wordstuff", "w") as f:
-    for i in range(len(origWords)):
-        f.write(origWords[i] + " , " + correctWords[i] + "\n")
+### Our word array with incorrect words.
+start_indices = [i for i, x in enumerate(wordList) if x == "<ERR"]
+end_indices = [i for i, x in enumerate(wordList) if x == "</ERR>"]
+origWords = [x.strip(",") for x in wordList]
+for i in range(len(start_indices)):
+    origWords[start_indices[i]] = ' '.join(wordList[start_indices[i]:end_indices[i] + 1])
+    m = re.search('<ERR targ=.*>(.+?)</ERR>', origWords[start_indices[i]])
+    if(m):
+        origWords[start_indices[i]] = m.group(1).strip().lower()
+i = 0
+delete = False
+while i < len(origWords):
+    if(origWords[i].startswith("targ=")):
+        while(origWords[i] != "</ERR>"):
+            del origWords[i]
+        del origWords[i]
+        i += 1
+    else:
+        i += 1
+
+
 
 
 ### Let's form our bigram.
@@ -88,6 +105,7 @@ for i in range(len(origWords)):
         graph = Graph()
         continue
     if(i in correctionIndexes):
+        found = False
         for word in unigram.occurences.keys():
             if (len(origWords[i]) < len(word) - 1 or len(origWords[i]) > len(word) + 1):
                 continue
@@ -95,16 +113,39 @@ for i in range(len(origWords)):
             if (tuple != None):
                 tupletized = EditDistance.tupletize(tuple, origWords[i], word)
                 graph.add_node(Vertex(id, layer, word, emissions[tupletized]))
+                found = True
                 id += 1
+        if(not found):
+            graph.add_node(Vertex(id, layer, origWords[i], 1))
+            id += 1
     else:
         graph.add_node(Vertex(id, layer, origWords[i], 1))
         id += 1
     layer += 1
 
+
 # Forward viterbi.
+guesses = []
 for graph in graphs:
     graph.calculateInitials(unigram)
     graph.calculateProbabilities(bigram)
-    print(graph.getSentence())
+    guesses.extend(graph.getSentence())
+    output.write(' '.join(graph.getSentence()))
+
+
+with open("wordstuff", "w") as f:
+    for i in correctionIndexes:
+        f.write(correctWords[i] + " " + guesses[i] + "\n")
+
+
+pay = 0
+payda = len(correctionIndexes)
+for i in correctionIndexes:
+    if(correctWords[i] == guesses[i]):
+        pay += 1
+
+output.write(str(float(pay) / payda))
+print(str(float(pay) / payda))
 
 dataset.close()
+output.close()
